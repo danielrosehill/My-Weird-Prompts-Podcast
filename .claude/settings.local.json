@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__gemini-transcription__transcribe_audio"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
