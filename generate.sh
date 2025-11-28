@@ -26,20 +26,24 @@ echo "Select a generation format:"
 echo ""
 echo "  1) Gemini Dialogue (~15 min)"
 echo "     Two AI hosts discuss the topic using Gemini's native TTS"
-echo "     Cost: Low (Gemini API only)"
+echo "     Cost: Low (~\$0.10/episode)"
 echo ""
-echo "  2) Resemble Dialogue (~15 min)"
-echo "     Two AI hosts (Corn & Herman) via Resemble AI TTS"
-echo "     Cost: Medium (Gemini + Resemble API)"
+echo "  2) Chatterbox Dialogue (~15 min) [RECOMMENDED]"
+echo "     Voice-cloned hosts (Corn & Herman) via Replicate"
+echo "     Cost: Low (~\$1.88/episode)"
 echo ""
-echo "  3) OpenAI Single Host (~2-4 min)"
+echo "  3) Resemble Dialogue (~15 min)"
+echo "     Two AI hosts (Corn & Herman) via Resemble AI direct API"
+echo "     Cost: HIGH (~\$5-6/episode)"
+echo ""
+echo "  4) OpenAI Single Host (~2-4 min)"
 echo "     Single AI host responds to your prompt"
 echo "     Cost: Free (edge-tts) or Low (OpenAI TTS)"
 echo ""
 echo "  q) Quit"
 echo ""
 
-read -p "Enter choice [1-3, q]: " choice
+read -p "Enter choice [1-4, q]: " choice
 
 case $choice in
     1)
@@ -49,10 +53,15 @@ case $choice in
         ;;
     2)
         echo ""
+        echo "Starting Chatterbox Dialogue generator (voice cloning)..."
+        "$VENV_PYTHON" "$GENERATORS_DIR/chatterbox_dialogue.py" "$@"
+        ;;
+    3)
+        echo ""
         echo "Starting Resemble Dialogue generator..."
         "$VENV_PYTHON" "$GENERATORS_DIR/resemble_dialogue.py" "$@"
         ;;
-    3)
+    4)
         echo ""
         echo "Starting OpenAI Single Host generator..."
         "$VENV_PYTHON" "$GENERATORS_DIR/openai_single_host.py" "$@"
