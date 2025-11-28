@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  fish-speech:
+    build:
+      context: .
+      dockerfile: Dockerfile.fish-speech
+    container_name: fish-speech-rocm
+
+    # ROCm GPU access
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+
+    # Security options for ROCm
+    security_opt:
+      - seccomp:unconfined
+
+    # Environment
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=11.0.0
+      - PYTORCH_ROCM_ARCH=gfx1100
+      - HIP_VISIBLE_DEVICES=0
+
+    # Ports
+    ports:
+      - "7860:7860"  # WebUI
+      - "8080:8080"  # API
+
+    # Volumes for persistence
+    volumes:
+      - fish-speech-models:/app/checkpoints
+      - ./references:/app/references
+      - ../output:/app/output
+
+    # Resource limits
+    shm_size: '8gb'
+
+    # Keep container running
+    tty: true
+    stdin_open: true
+
+volumes:
+  fish-speech-models:
+    name: fish-speech-models

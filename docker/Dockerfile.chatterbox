@@ -1,0 +1,36 @@
+# Chatterbox TTS with ROCm support for AMD GPUs
+# Using Python 3.10 image since chatterbox deps require Python <3.12
+FROM rocm/pytorch:rocm6.2.3_ubuntu22.04_py3.10_pytorch_release_2.3.0
+
+# Set environment variables for ROCm
+ENV HSA_OVERRIDE_GFX_VERSION=11.0.0
+ENV PYTORCH_ROCM_ARCH=gfx1100
+ENV HIP_VISIBLE_DEVICES=0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and setuptools to fix Python 3.12 compatibility
+RUN pip install --upgrade pip setuptools wheel
+
+# Clone and install Chatterbox from source, relaxing the numpy requirement
+# The rocm/pytorch image has numpy 2.x which actually works fine with chatterbox
+RUN git clone https://github.com/resemble-ai/chatterbox.git /tmp/chatterbox && \
+    cd /tmp/chatterbox && \
+    sed -i 's/numpy>=1.24.0,<1.26.0/numpy>=1.24.0/' pyproject.toml && \
+    pip install --no-cache-dir . && \
+    rm -rf /tmp/chatterbox
+
+# Create directories
+RUN mkdir -p /app/input /app/output /app/references
+
+WORKDIR /app
+
+# Copy the TTS script
+COPY chatterbox_tts.py /app/
+
+# Default command
+CMD ["python", "/app/chatterbox_tts.py", "--help"]

@@ -1,0 +1,80 @@
+# Fish Speech TTS with ROCm support for AMD GPUs
+# Based on rocm/pytorch image
+
+FROM rocm/pytorch:latest
+
+# Set environment variables for ROCm
+ENV HSA_OVERRIDE_GFX_VERSION=11.0.0
+ENV PYTORCH_ROCM_ARCH=gfx1100
+ENV HIP_VISIBLE_DEVICES=0
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    portaudio19-dev \
+    libsox-dev \
+    ffmpeg \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Clone Fish Speech
+RUN git clone https://github.com/fishaudio/fish-speech.git /app/fish-speech
+
+WORKDIR /app/fish-speech
+
+# Install all Fish Speech dependencies (without overwriting ROCm torch)
+# Split into multiple RUN commands to avoid cache invalidation issues
+RUN pip install --no-cache-dir \
+    transformers \
+    lightning \
+    hydra-core \
+    librosa \
+    resampy \
+    pydub \
+    pyaudio \
+    gradio \
+    loguru \
+    ormsgpack \
+    tiktoken \
+    einops \
+    natsort \
+    soundfile \
+    huggingface_hub
+
+RUN pip install --no-cache-dir \
+    descript-audio-codec \
+    descript-audiotools \
+    cachetools \
+    datasets \
+    einx \
+    kui \
+    loralib \
+    pydantic \
+    pyrootutils \
+    rich \
+    silero-vad \
+    tensorboard \
+    uvicorn \
+    wandb \
+    zstandard
+
+# Install grpcio (binary wheel only, skip tools which requires compilation)
+RUN pip install --no-cache-dir --only-binary=:all: grpcio || pip install --no-cache-dir grpcio
+
+# Install the fish-speech package in editable mode
+RUN pip install --no-cache-dir -e . --no-deps
+
+# Create directories for models and references
+RUN mkdir -p /app/checkpoints /app/references /app/output
+
+# Download the default model (will be cached in volume)
+# Users should mount a volume to /app/checkpoints to persist models
+
+# Expose ports for API and WebUI
+EXPOSE 7860 8080
+
+# Default command - start the API server
+CMD ["python", "-m", "fish_speech.webui.app", "--listen", "0.0.0.0:7860"]

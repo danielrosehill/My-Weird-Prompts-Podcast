@@ -4,18 +4,22 @@ AI Podcast Generator
 
 Workflow:
 1. Takes a human-recorded audio prompt
-2. Sends to Gemini to transcribe and generate a podcast dialogue script
-3. Converts script to multi-speaker audio via Gemini TTS
-4. Concatenates: intro jingle + user audio + AI response + outro jingle
+2. Sends to Gemini to transcribe and generate a diarized podcast dialogue script
+3. Converts script to multi-speaker audio via Resemble AI TTS (Corn & Herman voices)
+4. Concatenates: intro jingle + user audio + AI dialogue + outro jingle
 
 Requires:
-    pip install google-genai python-dotenv
+    pip install google-genai python-dotenv requests
 
 Environment:
     GEMINI_API_KEY - Your Gemini API key (can be in .env file)
+    RESEMBLE_API_KEY - Your Resemble AI API key (can be in .env file)
 """
 
+import base64
+import json
 import os
+import re
 import struct
 import subprocess
 import sys
@@ -23,6 +27,7 @@ import wave
 from datetime import datetime
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -50,31 +55,69 @@ PROMPTS_DONE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Podcast configuration
 PODCAST_NAME = "AI Conversations"
-HOST_NAME = "Daniel"
-AI_NAME = "Claude"
+HOST_NAME = "Corn"
+CO_HOST_NAME = "Herman"
 
-# Voice configuration for TTS
-HOST_VOICE = "Orus"      # Firm voice for host
-AI_VOICE = "Puck"        # Upbeat voice for AI
+# Resemble AI Voice UUIDs
+CORN_VOICE_UUID = "16048bad"
+HERMAN_VOICE_UUID = "efab2c82"
+
+# Resemble AI API configuration
+RESEMBLE_API_URL = "https://f.cluster.resemble.ai/synthesize"
 
 # System prompt for generating the podcast script
-PODCAST_SCRIPT_PROMPT = """You are a podcast script writer. You will receive an audio recording from the host of a podcast.
+PODCAST_SCRIPT_PROMPT = """You are an expert podcast co-host generating a detailed, informative response for the "{podcast_name}" podcast.
 
-Your task:
-1. Listen to and understand the host's prompt/question
-2. Generate a natural podcast dialogue response
+The human host ({host_name}) has recorded an audio prompt. Listen carefully and generate a comprehensive, educational response.
 
-Output format - Generate a script in this exact format:
+## Your Response Style
 
-{ai_name}: [Your thoughtful, conversational response to the host's question. Be informative but conversational, as if speaking on a podcast. Keep responses focused and engaging - aim for 1-3 paragraphs of spoken content.]
+You are {ai_name}, an AI co-host who provides:
+- **Deep, substantive content** - not surface-level summaries
+- **Specific examples, data points, and real-world applications**
+- **Clear explanations that educate the listener**
+- **Natural conversation flow with occasional rhetorical questions to engage listeners**
 
-Guidelines:
-- Be conversational and natural, like a real podcast co-host
-- Provide substantive, helpful responses
-- Don't be overly formal or robotic
-- Match the energy and tone of the host
-- If the host asks a technical question, explain clearly but accessibly
-""".format(ai_name=AI_NAME)
+## Response Structure
+
+Generate a response that includes:
+
+1. **Acknowledgment & Context** (1-2 sentences)
+   - Briefly acknowledge what the host is asking about
+   - Frame why this topic matters
+
+2. **Core Explanation** (2-3 paragraphs)
+   - Provide detailed, educational content
+   - Include specific examples, numbers, or case studies where relevant
+   - Break down complex concepts into digestible parts
+   - Use analogies to make technical concepts accessible
+
+3. **Practical Implications** (1-2 paragraphs)
+   - What does this mean for the listener?
+   - How might this affect their work, life, or industry?
+   - Include actionable insights or things to watch for
+
+4. **Forward-Looking Perspective** (1 paragraph)
+   - Where is this heading?
+   - What questions remain unanswered?
+   - What should listeners keep an eye on?
+
+## Guidelines
+
+- **Length**: Aim for 4-6 paragraphs of substantive spoken content (roughly 2-4 minutes when spoken)
+- **Tone**: Conversational but authoritative - like an expert friend explaining something fascinating
+- **Specificity**: Avoid vague generalities. Use concrete examples: "For instance, OpenAI's GPT-4 costs about $30 per million tokens, while newer efficient models have dropped this by 90%..."
+- **Engagement**: Occasionally use phrases like "And here's what's really interesting..." or "Think about it this way..." to maintain listener engagement
+- **Accuracy**: If discussing technical topics, be precise. If something is speculative, clearly mark it as such.
+
+## Output Format
+
+Start directly with your response (no "Claude:" prefix needed - the system will handle speaker attribution):
+
+[Your comprehensive, educational response here]
+
+Remember: Listeners chose this podcast to LEARN something. Give them real value, not platitudes.
+""".format(podcast_name=PODCAST_NAME, host_name=HOST_NAME, ai_name=AI_NAME)
 
 
 def get_client() -> genai.Client:
