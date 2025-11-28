@@ -20,6 +20,7 @@ import base64
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -147,9 +148,10 @@ def get_gemini_client() -> genai.Client:
 
 def get_resemble_api_key() -> str:
     """Get Resemble AI API key."""
-    api_key = os.environ.get("RESEMBLE_API_KEY")
+    # Try both common env var names
+    api_key = os.environ.get("RESEMBLE_API_KEY") or os.environ.get("RESEMBLE_API")
     if not api_key:
-        raise ValueError("RESEMBLE_API_KEY environment variable not set. Add it to .env file.")
+        raise ValueError("RESEMBLE_API_KEY or RESEMBLE_API environment variable not set. Add it to .env file.")
     return api_key
 
 
@@ -481,9 +483,17 @@ def generate_podcast_episode(
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         episode_name = f"episode_{timestamp}"
 
+    # Create episode folder structure: output/episodes/episode_name/
+    episode_dir = EPISODES_DIR / episode_name
+    episode_dir.mkdir(parents=True, exist_ok=True)
+
+    # Temp directory for segments (will be deleted after concatenation)
+    temp_segments_dir = episode_dir / "_temp_segments"
+
     print(f"\n{'='*60}")
     print(f"Generating podcast episode: {episode_name}")
     print(f"Hosts: {HOST_NAME} (Corn voice) & {CO_HOST_NAME} (Herman voice)")
+    print(f"Output folder: {episode_dir}")
     print(f"{'='*60}\n")
 
     # Initialize Gemini client
@@ -494,7 +504,7 @@ def generate_podcast_episode(
     script = transcribe_and_generate_script(client, prompt_audio_path)
 
     # Save the script for reference
-    script_path = RESPONSES_DIR / f"{episode_name}_script.txt"
+    script_path = episode_dir / "script.txt"
     with open(script_path, "w") as f:
         f.write(script)
     print(f"Script saved to: {script_path}")
@@ -506,23 +516,16 @@ def generate_podcast_episode(
     if not segments:
         raise ValueError("Failed to parse any dialogue segments from the script")
 
-    # Save parsed segments for debugging
-    segments_path = RESPONSES_DIR / f"{episode_name}_segments.json"
-    with open(segments_path, "w") as f:
-        json.dump(segments, f, indent=2)
-    print(f"Parsed segments saved to: {segments_path}")
-
     # Step 3: Generate audio for each segment using Resemble AI
     print(f"\nStep 3: Generating audio for {len(segments)} segments with Resemble AI...")
-    segment_audio_dir = RESPONSES_DIR / f"{episode_name}_segments"
-    dialogue_audio_files = generate_dialogue_audio(segments, segment_audio_dir)
+    dialogue_audio_files = generate_dialogue_audio(segments, temp_segments_dir)
 
     if not dialogue_audio_files:
         raise ValueError("Failed to generate any audio segments")
 
     # Step 4: Concatenate into final episode
     print("\nStep 4: Concatenating audio segments...")
-    episode_path = EPISODES_DIR / f"{episode_name}.mp3"
+    episode_path = episode_dir / f"{episode_name}.mp3"
     intro_jingle = JINGLES_DIR / "mixed-intro.mp3"
     outro_jingle = JINGLES_DIR / "mixed-outro.mp3"
 
@@ -533,15 +536,17 @@ def generate_podcast_episode(
         outro_jingle=outro_jingle if outro_jingle.exists() else None,
     )
 
-    # Cleanup segment files (optional - keep for debugging)
-    # cleanup_segment_files(segment_audio_dir)
+    # Cleanup segment files - delete temp folder and all segments
+    print("Cleaning up temporary segment files...")
+    if temp_segments_dir.exists():
+        shutil.rmtree(temp_segments_dir)
 
     # Step 5: Generate episode metadata (title and description)
     print("\nStep 5: Generating episode title and description...")
     metadata = generate_episode_metadata(client, script)
 
     # Save metadata to JSON file
-    metadata_path = RESPONSES_DIR / f"{episode_name}_metadata.json"
+    metadata_path = episode_dir / "metadata.json"
     full_metadata = {
         'title': metadata['title'],
         'description': metadata['description'],
@@ -561,11 +566,11 @@ def generate_podcast_episode(
     print(f"  {metadata['title']}")
     print(f"\nSUGGESTED DESCRIPTION:")
     print(f"  {metadata['description']}")
-    print(f"\nFILES:")
-    print(f"  Audio:    {episode_path}")
-    print(f"  Script:   {script_path}")
-    print(f"  Metadata: {metadata_path}")
-    print(f"  Segments: {len(segments)} dialogue turns")
+    print(f"\nEPISODE FOLDER: {episode_dir}")
+    print(f"  - {episode_path.name}")
+    print(f"  - script.txt")
+    print(f"  - metadata.json")
+    print(f"  ({len(segments)} dialogue turns)")
     print(f"{'='*60}\n")
 
     return episode_path

@@ -1,0 +1,24 @@
+EPISODE METADATA
+================
+
+Title:
+AI: Not an Overnight Success Story
+
+Description:
+Did you think modern AI, from ChatGPT to generative art, burst onto the scene overnight? Prepare to rethink everything! In this captivating episode of AI Conversations, hosts Herman and Donald unravel the astonishing, decades-long journey of artificial intelligence, tracing its roots from ancient philosophical inquiries and Alan Turing's foundational concepts to the pivotal Dartmouth conference where the term 'AI' was coined, and through the subsequent 'AI Winters' that challenged its early promise. Discover the crucial shifts from rigid, symbolic systems to the transformative power of machine learning and deep neural networks, understanding how breakthroughs in data, computing, and algorithms truly paved the way for the sophisticated AI we interact with today, providing essential context for comprehending its present and navigating its future.
+
+---
+
+Episode Name: episode_20251128_214757
+Generated: 2025-11-28T21:57:30.717800
+TTS Engine: gemini-2.5-pro-preview-tts
+Dialogue Segments: 45
+
+Voices:
+  - Herman: Charon
+  - Donald: Orus
+
+Files:
+  - Audio: episode_20251128_214757.mp3
+  - Script: script.txt
+  - Artwork: artwork.png
