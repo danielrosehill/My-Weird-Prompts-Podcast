@@ -1,0 +1,16 @@
+{
+  "title": "AGI's Crossroads: Are LLMs a \"Dead End\" to True AI?",
+  "description": "Dive deep into the electrifying debate shaping the future of Artificial General Intelligence (AGI). While sci-fi visions often dominate, prominent AI \"forefathers\" are challenging the very foundations of current development, calling large language models (LLMs) a \"dead end.\" This episode unpacks their critique: LLMs, brilliant statistical pattern-matchers, fundamentally lack an internal \"world model\" \u2013 a causal understanding of reality \u2013 leading to shallow understanding, hallucinations, and struggles with true common sense. We then explore the proposed alternative: building sophisticated \"world models\" that allow AI to simulate environments, predict outcomes, and learn from internal representations, moving beyond mere linguistic competence. This crucial discussion cuts through the hype to define what true progress in AI might look like, offering vital insights for anyone building with, working alongside, or simply curious about the path to stable, impactful AI.",
+  "image_prompt": "An abstract, high-tech digital art illustration representing a critical crossroads in AI development. On one path, stylized, interwoven text and code fragments form a vast, shallow network, suggesting the limitations of Large Language Models (LLMs), leading towards a faded or fragmented horizon \u2013 a \"dead end.\" The other path is vibrant, consisting of interconnected 3D geometric shapes, neural pathways, and subtle causal arrows, representing a \"world model\" concept with deep understanding, extending towards a clear, bright, futuristic horizon. A subtle, luminous human-like silhouette or abstract \"mind\" is positioned at the intersection, contemplating the choice. Dynamic lighting, cool blues and purples for the world model, with hints of red/orange for the LLM path's challenges. Emphasize complexity and the conceptual nature of the debate. Podcast cover art style.",
+  "cover_art": null,
+  "episode_name": "episode_20251129_000146",
+  "audio_file": "/home/daniel/repos/github/AI-Podcast-Experiment-1125/pipeline/output/episodes/episode_20251129_000146/episode_20251129_000146.mp3",
+  "script_file": "/home/daniel/repos/github/AI-Podcast-Experiment-1125/pipeline/output/episodes/episode_20251129_000146/script.txt",
+  "segments_count": 39,
+  "tts_engine": "chatterbox-replicate",
+  "voice_samples": {
+    "Corn": "/home/daniel/repos/github/AI-Podcast-Experiment-1125/config/voices/corn/wav/corn-1min.wav",
+    "Herman": "/home/daniel/repos/github/AI-Podcast-Experiment-1125/config/voices/herman/wav/herman-1min.wav"
+  },
+  "generated_at": "2025-11-29T00:08:42.835016"
+}

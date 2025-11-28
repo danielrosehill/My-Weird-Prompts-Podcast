@@ -6,9 +6,10 @@ __pycache__/
 # Environment
 .env
 
-# Output - ignore all episodes except ep1 (demo)
+# Output - ignore all episodes except ep1 (demo) and ep2
 output/episodes/*
 !output/episodes/ep1/
+!output/episodes/ep2/
 
 # Prompts - ignore processed audio files
 prompts/to-process/*

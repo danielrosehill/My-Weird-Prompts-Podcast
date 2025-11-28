@@ -371,7 +371,7 @@ def generate_dialogue_audio(segments: list[dict], episode_dir: Path, voice_urls:
     for i, segment in enumerate(segments):
         speaker = segment['speaker']
         voice_url = voice_urls[speaker]
-        segment_path = temp_dir / f"segment_{i:03d}_{speaker.lower()}.wav"
+        segment_path = temp_dir / f"segment_{i:03d}_{speaker.lower()}.mp3"
         tasks.append((i, segment, voice_url, segment_path))
 
     # Execute TTS in parallel with thread pool
@@ -404,11 +404,11 @@ def generate_dialogue_audio(segments: list[dict], episode_dir: Path, voice_urls:
         for sf in segment_files:
             f.write(f"file '{sf}'\n")
 
-    dialogue_path = episode_dir / "dialogue.wav"
+    dialogue_path = episode_dir / "dialogue.mp3"
     cmd = [
         "ffmpeg", "-y", "-f", "concat", "-safe", "0",
         "-i", str(filelist_path),
-        "-c:a", "pcm_s16le", "-ar", "44100",
+        "-c:a", "libmp3lame", "-b:a", "192k", "-ar", "44100",
         str(dialogue_path)
     ]
     subprocess.run(cmd, capture_output=True, check=True)
@@ -608,60 +608,47 @@ Script:
     }
 
 
-def generate_cover_art(client: genai.Client, image_prompt: str, output_path: Path) -> Path:
+def generate_cover_art(image_prompt: str, output_path: Path) -> Path:
     """
-    Generate episode cover art using Gemini's image generation.
+    Generate episode cover art using Replicate (Flux Schnell).
 
     Args:
-        client: Gemini client
         image_prompt: Prompt describing the desired cover art
         output_path: Where to save the generated image
 
     Returns:
         Path to the generated image, or None if generation failed
     """
-    print(f"Generating cover art...")
+    print(f"Generating cover art with Replicate (Flux Schnell)...")
 
     # Enhance the prompt for podcast cover art style
-    enhanced_prompt = f"""Create a professional podcast episode cover art image.
-Style: Modern, clean, visually striking, suitable for podcast platforms.
-Square format (1:1 aspect ratio).
-No text in the image - just visual elements.
-
-Theme: {image_prompt}"""
+    enhanced_prompt = f"""Professional podcast episode cover art, modern clean design, visually striking, suitable for podcast platforms, square format, no text, abstract or symbolic representation. Theme: {image_prompt}"""
 
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash-preview-05-20',
-            contents=enhanced_prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["IMAGE"],
-                image_config=types.ImageConfig(
-                    aspect_ratio="1:1",
-                ),
-            ),
+        import urllib.request
+
+        output = replicate.run(
+            "black-forest-labs/flux-schnell",
+            input={
+                "prompt": enhanced_prompt,
+                "aspect_ratio": "1:1",
+                "output_format": "png",
+                "num_outputs": 1,
+            }
         )
 
-        # Extract the image from response
-        for part in response.parts:
-            if part.inline_data:
-                # Save the image
-                output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Download the output image
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                if HAS_PIL:
-                    # Use PIL for proper image handling
-                    image = Image.open(BytesIO(part.inline_data.data))
-                    image.save(output_path, format='PNG')
-                else:
-                    # Fallback: save raw bytes
-                    with open(output_path, 'wb') as f:
-                        f.write(part.inline_data.data)
+        # Handle output (could be a list or single URL)
+        image_url = output[0] if isinstance(output, list) else output
+        if hasattr(image_url, 'url'):
+            image_url = image_url.url
+        image_url = str(image_url)
 
-                print(f"  Cover art saved to: {output_path}")
-                return output_path
-
-        print("  Warning: No image generated in response")
-        return None
+        urllib.request.urlretrieve(image_url, str(output_path))
+        print(f"  Cover art saved to: {output_path}")
+        return output_path
 
     except Exception as e:
         print(f"  Warning: Cover art generation failed: {e}")
@@ -810,7 +797,7 @@ def generate_podcast_episode(
     if metadata.get('image_prompt'):
         print("\nStep 7: Generating episode cover art...")
         cover_art_path = episode_dir / "cover.png"
-        cover_art_path = generate_cover_art(gemini_client, metadata['image_prompt'], cover_art_path)
+        cover_art_path = generate_cover_art(metadata['image_prompt'], cover_art_path)
     else:
         print("\nStep 7: Skipping cover art (no image prompt generated)")
 
