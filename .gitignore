@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Environment
+.env
+
+# Output - ignore all episodes except ep1 (demo)
+output/episodes/*
+!output/episodes/ep1/
+
+# Prompts - ignore processed audio files
+prompts/to-process/*
+prompts/done/*
+!prompts/to-process/.gitkeep
+!prompts/done/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp

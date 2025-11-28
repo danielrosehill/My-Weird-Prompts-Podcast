@@ -37,7 +37,7 @@ from google.genai import types
 load_dotenv()
 
 # Configuration
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # Queue-based directory structure
 PROMPTS_TO_PROCESS_DIR = PROJECT_ROOT / "prompts" / "to-process"
