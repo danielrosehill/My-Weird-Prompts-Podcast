@@ -95,6 +95,30 @@ Parallel workers generate voice-cloned audio segments while Flux Schnell creates
 
 ![TTS Generation](screenshots/1/5.png)
 
+### 6. Episode Assembly & Normalization
+
+All 32 dialogue segments are concatenated, then the full episode is assembled with loudness normalization to -16 LUFS:
+
+![Assembly](screenshots/1/6.png)
+
+### 7. Generation Complete
+
+Final episode with auto-generated description, ready for upload:
+
+![Complete](screenshots/1/7.png)
+
+### 8. Output Files
+
+Each episode gets its own folder with the final MP3, cover art variants, script, and metadata:
+
+![Output Files](screenshots/1/8.png)
+
+### 9. Generated Metadata
+
+Full episode metadata including title, description, and technical details:
+
+![Metadata](screenshots/1/9.png)
+
 ## Cost
 
 Approximately $0.40 per 15-minute episode (Replicate TTS + Gemini + cover art generation).
