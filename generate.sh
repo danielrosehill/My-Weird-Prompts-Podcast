@@ -28,22 +28,26 @@ echo "  1) Gemini Dialogue (~15 min)"
 echo "     Two AI hosts discuss the topic using Gemini's native TTS"
 echo "     Cost: Low (~\$0.10/episode)"
 echo ""
-echo "  2) Chatterbox Dialogue (~15 min) [RECOMMENDED]"
+echo "  2) Chatterbox Dialogue (~15 min) [REPLICATE]"
 echo "     Voice-cloned hosts (Corn & Herman) via Replicate"
 echo "     Cost: Low (~\$1.88/episode)"
 echo ""
-echo "  3) Resemble Dialogue (~15 min)"
+echo "  3) Chatterbox LOCAL Dialogue (~15 min) [RECOMMENDED]"
+echo "     Voice-cloned hosts via LOCAL Chatterbox server (ROCm)"
+echo "     Cost: FREE (requires docker: chatterbox-tts)"
+echo ""
+echo "  4) Resemble Dialogue (~15 min)"
 echo "     Two AI hosts (Corn & Herman) via Resemble AI direct API"
 echo "     Cost: HIGH (~\$5-6/episode)"
 echo ""
-echo "  4) OpenAI Single Host (~2-4 min)"
+echo "  5) OpenAI Single Host (~2-4 min)"
 echo "     Single AI host responds to your prompt"
 echo "     Cost: Free (edge-tts) or Low (OpenAI TTS)"
 echo ""
 echo "  q) Quit"
 echo ""
 
-read -p "Enter choice [1-4, q]: " choice
+read -p "Enter choice [1-5, q]: " choice
 
 case $choice in
     1)
@@ -53,15 +57,32 @@ case $choice in
         ;;
     2)
         echo ""
-        echo "Starting Chatterbox Dialogue generator (voice cloning)..."
+        echo "Starting Chatterbox Dialogue generator (Replicate)..."
         "$VENV_PYTHON" "$GENERATORS_DIR/chatterbox_dialogue.py" "$@"
         ;;
     3)
         echo ""
+        echo "Starting Chatterbox LOCAL Dialogue generator..."
+        # Check if chatterbox-tts container is running
+        if ! docker ps --format '{{.Names}}' | grep -q 'chatterbox-tts'; then
+            echo "Warning: chatterbox-tts container not running."
+            echo "Starting it now..."
+            docker start chatterbox-tts 2>/dev/null || {
+                echo "Error: Could not start chatterbox-tts container."
+                echo "Create it first with the appropriate docker run command."
+                exit 1
+            }
+            echo "Waiting for server to initialize..."
+            sleep 5
+        fi
+        "$VENV_PYTHON" "$GENERATORS_DIR/chatterbox_local_dialogue.py" "$@"
+        ;;
+    4)
+        echo ""
         echo "Starting Resemble Dialogue generator..."
         "$VENV_PYTHON" "$GENERATORS_DIR/resemble_dialogue.py" "$@"
         ;;
-    4)
+    5)
         echo ""
         echo "Starting OpenAI Single Host generator..."
         "$VENV_PYTHON" "$GENERATORS_DIR/openai_single_host.py" "$@"
