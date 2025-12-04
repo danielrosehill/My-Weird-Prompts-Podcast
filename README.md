@@ -2,7 +2,8 @@
 
 ![alt text](graphics/repo/2.png)
 
-**[Listen on Spotify](https://open.spotify.com/show/4RlBls1ZQxs4ciREOR8vpU)**
+[![Listen on Spotify](https://img.shields.io/badge/Spotify-Listen_Now-1DB954?style=for-the-badge&logo=spotify&logoColor=white)](https://open.spotify.com/show/4RlBls1ZQxs4ciREOR8vpU)
+[![RSS Feed](https://img.shields.io/badge/RSS-Subscribe-FFA500?style=for-the-badge&logo=rss&logoColor=white)](https://anchor.fm/s/1082efa78/podcast/rss)
 
 The production pipeline for *My Weird Prompts*, a semi-automated AI podcast that combines human-recorded prompts with AI-generated responses, rendered as listenable audio episodes.
 
