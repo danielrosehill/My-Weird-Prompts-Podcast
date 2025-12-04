@@ -61,6 +61,40 @@ cp your-prompt.mp3 pipeline/prompts/to-process/
 # Output appears in pipeline/output/episodes/<episode-name>/
 ```
 
+## Generation Process
+
+Here's what the episode generation looks like in action:
+
+### 1. Startup & File Detection
+
+The generator scans for audio prompts in the queue:
+
+![Startup](screenshots/1/1.png)
+
+### 2. Voice Sample Upload & Audio Processing
+
+Voice samples are uploaded to Replicate while the prompt audio is processed (silence detection, trimming):
+
+![Processing](screenshots/1/2.png)
+
+### 3. Script Generation
+
+Gemini transcribes the prompt and generates a ~15-minute diarized podcast script:
+
+![Script Generation](screenshots/1/3.png)
+
+### 4. AI Dialogue Preview
+
+The generated script features natural conversation between hosts Corn and Herman:
+
+![Dialogue Preview](screenshots/1/4.png)
+
+### 5. TTS & Cover Art Generation
+
+Parallel workers generate voice-cloned audio segments while Flux Schnell creates cover art variants:
+
+![TTS Generation](screenshots/1/5.png)
+
 ## Cost
 
 Approximately $0.40 per 15-minute episode (Replicate TTS + Gemini + cover art generation).
