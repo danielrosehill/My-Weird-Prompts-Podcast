@@ -65,11 +65,15 @@ cp your-prompt.mp3 pipeline/prompts/to-process/
 
 Here's what the episode generation looks like in action:
 
+---
+
 ### 1. Startup & File Detection
 
 The generator scans for audio prompts in the queue:
 
 ![Startup](screenshots/1/1.png)
+
+---
 
 ### 2. Voice Sample Upload & Audio Processing
 
@@ -77,11 +81,15 @@ Voice samples are uploaded to Replicate while the prompt audio is processed (sil
 
 ![Processing](screenshots/1/2.png)
 
+---
+
 ### 3. Script Generation
 
 Gemini transcribes the prompt and generates a ~15-minute diarized podcast script:
 
 ![Script Generation](screenshots/1/3.png)
+
+---
 
 ### 4. AI Dialogue Preview
 
@@ -89,11 +97,15 @@ The generated script features natural conversation between hosts Corn and Herman
 
 ![Dialogue Preview](screenshots/1/4.png)
 
+---
+
 ### 5. TTS & Cover Art Generation
 
 Parallel workers generate voice-cloned audio segments while Flux Schnell creates cover art variants:
 
 ![TTS Generation](screenshots/1/5.png)
+
+---
 
 ### 6. Episode Assembly & Normalization
 
@@ -101,11 +113,15 @@ All 32 dialogue segments are concatenated, then the full episode is assembled wi
 
 ![Assembly](screenshots/1/6.png)
 
+---
+
 ### 7. Generation Complete
 
 Final episode with auto-generated description, ready for upload:
 
 ![Complete](screenshots/1/7.png)
+
+---
 
 ### 8. Output Files
 
@@ -113,11 +129,15 @@ Each episode gets its own folder with the final MP3, cover art variants, script,
 
 ![Output Files](screenshots/1/8.png)
 
+---
+
 ### 9. Generated Metadata
 
 Full episode metadata including title, description, and technical details:
 
 ![Metadata](screenshots/1/9.png)
+
+---
 
 ## Cost
 
