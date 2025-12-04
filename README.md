@@ -1,5 +1,3 @@
-# My Weird Prompts - Podcast Production Pipeline
-
 ![alt text](graphics/repo/2.png)
 
 [![Listen on Spotify](https://img.shields.io/badge/Spotify-Listen_Now-1DB954?style=for-the-badge&logo=spotify&logoColor=white)](https://open.spotify.com/show/4RlBls1ZQxs4ciREOR8vpU)
@@ -23,7 +21,7 @@ Previous N8N workflows (speech-to-text → LLM → text-to-speech) work but have
 - Quality TTS (like ElevenLabs) is expensive for regular 30-minute episodes
 - Fully synthetic output lacks the human element
 
-### The Solution
+## Production Pipeline 
 A hybrid approach:
 1. **Human prompts** - Recorded audio prompts from the creator
 2. **AI responses** - Multimodal AI generates podcast-style dialogue
