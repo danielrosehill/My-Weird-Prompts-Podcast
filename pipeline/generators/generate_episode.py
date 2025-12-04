@@ -67,9 +67,14 @@ VOICES_DIR = PROJECT_ROOT / "config" / "voices"
 EPISODES_DIR.mkdir(parents=True, exist_ok=True)
 
 # Podcast configuration
-PODCAST_NAME = "AI Conversations"
+PODCAST_NAME = "My Weird Prompts"
+PODCAST_SUBTITLE = "A Human-AI Podcast Collaboration"
+PRODUCER_NAME = "Daniel Rosehill"
 HOST_NAME = "Corn"
 CO_HOST_NAME = "Herman"
+
+# Disclaimer audio path
+DISCLAIMER_PATH = PIPELINE_ROOT / "show-elements" / "mixed" / "disclaimer.mp3"
 
 # Voice sample paths for cloning
 VOICE_SAMPLES = {
@@ -94,9 +99,13 @@ MAX_SILENCE_DURATION = 0.4  # Compress longer silences down to this duration
 TRIM_LEADING_TRAILING = True  # Remove silence at start/end of prompt
 
 # System prompt for generating a diarized podcast dialogue script (~15 minutes)
-PODCAST_SCRIPT_PROMPT = """You are a podcast script writer creating an engaging two-host dialogue for "{podcast_name}".
+PODCAST_SCRIPT_PROMPT = """You are a podcast script writer creating an engaging two-host dialogue for "{podcast_name}" ({podcast_subtitle}).
 
-The user has recorded an audio prompt with a topic/question. Listen carefully and generate a comprehensive ~15 minute podcast episode script as a natural conversation between two AI hosts.
+## About This Podcast
+
+"{podcast_name}" is a unique human-AI collaboration podcast produced by {producer_name}. Daniel records audio prompts with topics, questions, or ideas he wants explored, and the AI hosts ({host_name} and {co_host_name}) discuss them in depth. The podcast is available on Spotify and other major podcast platforms.
+
+**IMPORTANT**: Daniel is NOT "a listener" - he is the producer and creator of the show who sends in the prompts. When referring to the prompt, say things like "Daniel wanted us to explore...", "Daniel's asked us to dig into...", or "This week Daniel sent us a fascinating prompt about...". Never say "a listener asked" or similar.
 
 ## The Hosts
 
@@ -116,7 +125,8 @@ You MUST output the script in this exact diarized format - each line starting wi
 ## Episode Structure (~15 minutes total when spoken, approximately 2000-2500 words)
 
 1. **Opening Hook** (30 seconds)
-   - {host_name} introduces the topic with an intriguing angle
+   - {host_name} welcomes listeners to {podcast_name} and introduces today's topic
+   - Reference that Daniel sent in this prompt
    - {co_host_name} adds a surprising fact or stakes
 
 2. **Topic Introduction** (2 minutes)
@@ -139,7 +149,8 @@ You MUST output the script in this exact diarized format - each line starting wi
 5. **Closing Thoughts** (1-2 minutes)
    - Future implications and predictions
    - What questions remain unanswered
-   - Tease potential follow-up topics
+   - Thank Daniel for the prompt
+   - Remind listeners they can find {podcast_name} on Spotify and wherever they get their podcasts
    - Sign off
 
 ## Dialogue Guidelines
@@ -163,12 +174,18 @@ You MUST output the script in this exact diarized format - each line starting wi
 Generate ONLY the diarized script. No stage directions, no [brackets], no metadata - just speaker names and their dialogue.
 
 Example format:
-{host_name}: Welcome back to {podcast_name}! Today we're diving into something that's been all over the headlines lately, and honestly, I've been really curious to dig into this one.
+{host_name}: Welcome to {podcast_name}! I'm {host_name}, and as always I'm here with {co_host_name}. Daniel sent us a really interesting prompt this week - he wants us to dig into something that's been all over the headlines lately.
 {co_host_name}: Yeah, and I think what's interesting is that most of the coverage has been missing the real story here. There's this whole dimension that people aren't talking about.
 {host_name}: Okay, so break it down for us. What's actually going on beneath the surface?
 
-Now generate the full ~15 minute episode script (2000-2500 words) based on the user's audio prompt.
-""".format(podcast_name=PODCAST_NAME, host_name=HOST_NAME, co_host_name=CO_HOST_NAME)
+Now generate the full ~15 minute episode script (2000-2500 words) based on Daniel's audio prompt.
+""".format(
+    podcast_name=PODCAST_NAME,
+    podcast_subtitle=PODCAST_SUBTITLE,
+    producer_name=PRODUCER_NAME,
+    host_name=HOST_NAME,
+    co_host_name=CO_HOST_NAME
+)
 
 
 def get_gemini_client() -> genai.Client:
@@ -685,10 +702,11 @@ def concatenate_episode(
     output_path: Path,
     user_prompt_audio: Path = None,
     intro_jingle: Path = None,
+    disclaimer_audio: Path = None,
     outro_jingle: Path = None,
 ) -> Path:
     """
-    Concatenate all episode audio: intro + user prompt + dialogue + outro.
+    Concatenate all episode audio: intro + disclaimer + user prompt + dialogue + outro.
     Applies EBU R128 loudness normalization to each component for consistent volume.
     """
     print("Assembling final episode with loudness normalization...")
@@ -698,6 +716,9 @@ def concatenate_episode(
     if intro_jingle and intro_jingle.exists():
         audio_files.append(intro_jingle)
         labels.append("intro")
+    if disclaimer_audio and disclaimer_audio.exists():
+        audio_files.append(disclaimer_audio)
+        labels.append("disclaimer")
     if user_prompt_audio and user_prompt_audio.exists():
         audio_files.append(user_prompt_audio)
         labels.append("prompt")
@@ -1037,6 +1058,7 @@ def generate_podcast_episode(
         output_path=episode_path,
         user_prompt_audio=processed_prompt_path,
         intro_jingle=intro_jingle if intro_jingle.exists() else None,
+        disclaimer_audio=DISCLAIMER_PATH if DISCLAIMER_PATH.exists() else None,
         outro_jingle=outro_jingle if outro_jingle.exists() else None,
     )
 
