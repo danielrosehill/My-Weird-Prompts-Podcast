@@ -26,7 +26,7 @@ Previous N8N workflows (speech-to-text → LLM → text-to-speech) work but have
 A hybrid approach:
 1. **Human prompts** - Recorded audio prompts from the creator
 2. **AI responses** - Multimodal AI generates podcast-style dialogue
-3. **Combined output** - Final episode includes: intro jingle → human prompt → AI dialogue → outro jingle
+3. **Combined output** - Final episode includes: intro jingle → disclaimer → human prompt → AI dialogue → outro jingle
 
 ## Workflow
 
@@ -39,6 +39,7 @@ A hybrid approach:
         ↓
 [Assemble Episode]
    - Intro jingle
+   - Disclaimer
    - Human prompt audio
    - AI dialogue (~15 min)
    - Outro jingle

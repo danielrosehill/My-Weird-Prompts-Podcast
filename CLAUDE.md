@@ -1,12 +1,12 @@
-# CLAUDE.md - AI Podcast Experiment
+# CLAUDE.md - My Weird Prompts
 
 ## Project Goal
 
-Build a **semi-automated AI podcast workflow** that:
-1. Takes human-recorded audio prompts
+Build a **semi-automated AI podcast workflow** for *My Weird Prompts* (A Human-AI Podcast Collaboration):
+1. Takes human-recorded audio prompts from Daniel Rosehill (producer)
 2. Sends them to Gemini for transcription and dialogue script generation
 3. Generates voice-cloned TTS via Replicate (Chatterbox)
-4. Assembles complete podcast episodes with intro/outro jingles
+4. Assembles complete podcast episodes with intro, disclaimer, prompt, dialogue, and outro
 5. Outputs normalized, publish-ready audio files
 
 **Key differentiator**: The human's actual voice recording is included in the final episode, not just transcribed. This creates a hybrid human+AI podcast format.
@@ -33,7 +33,7 @@ cp your-prompt.mp3 pipeline/prompts/to-process/
 [Audio Prompt] -> [Gemini: Transcribe + Generate Script] -> [Chatterbox TTS via Replicate]
                                                                        |
                                                                        v
-[Intro Jingle] + [Original Prompt Audio] + [AI Dialogue] + [Outro Jingle]
+[Intro] + [Disclaimer] + [Original Prompt Audio] + [AI Dialogue] + [Outro]
                                                                        |
                                                                        v
                                             [Normalized MP3 + Metadata + Cover Art]
@@ -46,10 +46,11 @@ cp your-prompt.mp3 pipeline/prompts/to-process/
 All generated episodes follow this structure:
 
 ```
-[Intro Jingle] -> [Original Prompt Audio] -> [AI Dialogue (~15 min)] -> [Outro Jingle]
+[Intro Jingle] -> [Disclaimer] -> [Daniel's Prompt] -> [AI Dialogue (~15 min)] -> [Outro Jingle]
 ```
 
 **Hosts**: Corn & Herman (voice-cloned from samples in `config/voices/`)
+**Producer**: Daniel Rosehill (hosts reference him by name, not as "a listener")
 
 **Cost**: ~$0.40 per 15-minute episode (Replicate TTS + Gemini + cover art)
 
@@ -61,6 +62,7 @@ All generated episodes follow this structure:
 /pipeline/
   /generators/
     generate_episode.py     # Main generator (Chatterbox via Replicate)
+    generate_disclaimer.py  # One-time disclaimer generator
     /archived/              # Legacy generators (Gemini, Kokoro, Resemble, etc.)
   /prompts/
     /to-process/            # Drop audio prompts here
@@ -68,8 +70,9 @@ All generated episodes follow this structure:
   /output/
     /episodes/              # Final rendered episodes (each in own folder)
   /show-elements/
-    /mixed/                 # Intro/outro jingles
+    /mixed/                 # Pre-mixed show elements
       mixed-intro.mp3
+      disclaimer.mp3        # AI-generated disclaimer
       mixed-outro.mp3
 
 /config/
@@ -100,7 +103,9 @@ record_prompt.py            # GUI for recording prompts
 
 ### Configuration
 Key settings in `generate_episode.py`:
-- `MAX_TTS_WORKERS = 8` - Parallel Replicate API calls
+- `PODCAST_NAME = "My Weird Prompts"`
+- `PRODUCER_NAME = "Daniel Rosehill"`
+- `MAX_TTS_WORKERS = 4` - Parallel Replicate API calls
 - `TARGET_LUFS = -16` - Podcast loudness standard
 - Voice samples in `config/voices/{corn,herman}/wav/`
 
