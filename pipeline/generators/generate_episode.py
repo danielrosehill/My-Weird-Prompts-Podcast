@@ -54,7 +54,6 @@ PROJECT_ROOT = PIPELINE_ROOT.parent
 
 # Queue-based directory structure
 PROMPTS_TO_PROCESS_DIR = PIPELINE_ROOT / "prompts" / "to-process"
-PROMPTS_DONE_DIR = PIPELINE_ROOT / "prompts" / "done"
 
 # Output directories
 OUTPUT_DIR = PIPELINE_ROOT / "output"
@@ -66,7 +65,6 @@ VOICES_DIR = PROJECT_ROOT / "config" / "voices"
 
 # Ensure output directories exist
 EPISODES_DIR.mkdir(parents=True, exist_ok=True)
-PROMPTS_DONE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Podcast configuration
 PODCAST_NAME = "AI Conversations"
@@ -908,12 +906,13 @@ def process_queue():
             episode_name = prompt_path.stem
             episode_path = generate_podcast_episode(prompt_path, episode_name)
 
-            done_path = PROMPTS_DONE_DIR / prompt_path.name
-            prompt_path.rename(done_path)
-            print(f"Moved {prompt_path.name} to done folder")
+            # Delete the prompt file after successful processing
+            prompt_path.unlink()
+            print(f"Deleted processed prompt: {prompt_path.name}")
 
         except Exception as e:
             print(f"Error processing {prompt_path.name}: {e}")
+            print(f"  (prompt file kept for retry)")
             import traceback
             traceback.print_exc()
 
