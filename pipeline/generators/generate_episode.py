@@ -83,8 +83,10 @@ VOICE_SAMPLES = {
     CO_HOST_NAME: VOICES_DIR / "herman" / "wav" / "herman-1min.wav",
 }
 
-# Target episode length (~20 minutes at ~150 words per minute)
-TARGET_WORD_COUNT = 3000  # ~20 minutes of dialogue
+# Target episode length (20-40 minutes at ~150 words per minute)
+# Length is dynamically chosen by the AI based on topic depth/complexity
+MIN_WORD_COUNT = 3000   # ~20 minutes of dialogue
+MAX_WORD_COUNT = 6000   # ~40 minutes of dialogue
 
 # Parallel TTS settings
 MAX_TTS_WORKERS = 4  # Number of concurrent Replicate API calls (keep low to avoid rate limits)
@@ -99,7 +101,7 @@ MIN_SILENCE_DURATION = 0.3  # Silence must be at least this long to be detected 
 MAX_SILENCE_DURATION = 0.4  # Compress longer silences down to this duration
 TRIM_LEADING_TRAILING = True  # Remove silence at start/end of prompt
 
-# System prompt for generating a diarized podcast dialogue script (~20 minutes)
+# System prompt for generating a diarized podcast dialogue script (20-40 minutes)
 PODCAST_SCRIPT_PROMPT = """You are a podcast script writer creating an engaging two-host dialogue for "{podcast_name}" ({podcast_subtitle}).
 
 ## About This Podcast
@@ -123,31 +125,42 @@ You MUST output the script in this exact diarized format - each line starting wi
 {host_name}: [dialogue]
 ...
 
-## Episode Structure (~20 minutes total when spoken, approximately 2750-3250 words)
+## Dynamic Episode Length (20-40 minutes)
 
-1. **Opening Hook** (30 seconds)
+**Choose the appropriate episode length based on the prompt's complexity and depth:**
+
+- **20-25 minutes (3000-3750 words)**: Simple topics, single focused questions, lighter subjects
+- **25-35 minutes (3750-5250 words)**: Multi-faceted topics, technical subjects requiring explanation, topics with multiple angles to explore
+- **35-40 minutes (5250-6000 words)**: Complex topics with rich history, controversial subjects with multiple perspectives, deep technical dives, topics Daniel explicitly asks for thorough exploration
+
+**Assess the prompt and choose the length that best serves the content.** Don't pad a simple topic to 40 minutes, and don't shortchange a rich topic at 20 minutes.
+
+## Episode Structure (scale proportionally to chosen length)
+
+1. **Opening Hook** (30-60 seconds)
    - {host_name} welcomes listeners to {podcast_name} and introduces today's topic
    - Reference that Daniel sent in this prompt
    - {co_host_name} adds a surprising fact or stakes
 
-2. **Topic Introduction** (2 minutes)
+2. **Topic Introduction** (2-4 minutes)
    - Both hosts establish what they'll cover
    - Set up why listeners should care
 
-3. **Core Discussion** (12-14 minutes)
+3. **Core Discussion** (60-70% of episode)
    - Deep, substantive back-and-forth exploration of the topic
    - {co_host_name} provides expert insights with specific details
    - {host_name} asks clarifying questions, plays devil's advocate
    - Include specific examples, data, case studies, historical context
    - Natural tangents that add value
    - Multiple sub-topics within the main theme
+   - For longer episodes: explore more angles, go deeper on each sub-topic
 
-4. **Practical Takeaways** (2-3 minutes)
+4. **Practical Takeaways** (10-15% of episode)
    - What can listeners actually do with this information?
    - Real-world applications
    - Different perspectives on implementation
 
-5. **Closing Thoughts** (1-2 minutes)
+5. **Closing Thoughts** (5-10% of episode)
    - Future implications and predictions
    - What questions remain unanswered
    - Thank Daniel for the prompt
@@ -168,7 +181,7 @@ You MUST output the script in this exact diarized format - each line starting wi
 - **Specificity**: Use real numbers, names, dates, examples when possible
 - **Accuracy**: Be precise on technical topics. Mark speculation clearly with phrases like "from what we know" or "current research suggests"
 - **Accessibility**: Explain jargon when used, use analogies for complex concepts
-- **Length**: AIM FOR 2750-3250 WORDS TOTAL. This is critical for reaching ~20 minutes.
+- **Length**: TARGET 3000-6000 WORDS based on topic complexity. Choose the right length for the content.
 
 ## Output
 
@@ -179,7 +192,7 @@ Example format:
 {co_host_name}: Yeah, and I think what's interesting is that most of the coverage has been missing the real story here. There's this whole dimension that people aren't talking about.
 {host_name}: Okay, so break it down for us. What's actually going on beneath the surface?
 
-Now generate the full ~20 minute episode script (2750-3250 words) based on Daniel's audio prompt.
+Now generate the episode script (3000-6000 words based on topic depth) based on Daniel's audio prompt.
 """.format(
     podcast_name=PODCAST_NAME,
     podcast_subtitle=PODCAST_SUBTITLE,
@@ -219,7 +232,7 @@ def transcribe_and_generate_script(client: genai.Client, audio_path: Path) -> st
     print(f"Uploaded file: {audio_file.name}")
 
     # Generate the diarized script
-    print("Generating diarized podcast script (~20 min episode)...")
+    print("Generating diarized podcast script (20-40 min based on topic)...")
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=[PODCAST_SCRIPT_PROMPT, audio_file],
@@ -621,10 +634,27 @@ def process_prompt_audio(input_path: Path, output_path: Path) -> Path:
                 print(f"  Trimming {removed['end'] - removed['start']:.2f}s trailing silence")
 
         # Step 3: Extract and concatenate segments
-        print(f"  Extracting {len(speech_segments)} segments...")
+        # Filter out segments that are too short (< 10ms) - ffmpeg can't handle them
+        MIN_SEGMENT_DURATION = 0.01  # 10 milliseconds
+        valid_segments = [seg for seg in speech_segments if (seg['end'] - seg['start']) >= MIN_SEGMENT_DURATION]
+        if len(valid_segments) < len(speech_segments):
+            print(f"  Filtered out {len(speech_segments) - len(valid_segments)} tiny segments (< {MIN_SEGMENT_DURATION*1000:.0f}ms)")
+
+        # If no valid segments remain, just convert the original
+        if not valid_segments:
+            print("  No valid segments after filtering - using original audio")
+            convert_cmd = [
+                "ffmpeg", "-y", "-i", str(input_path),
+                "-c:a", "pcm_s16le", "-ar", "44100",
+                str(output_path)
+            ]
+            subprocess.run(convert_cmd, capture_output=True, check=True)
+            return output_path
+
+        print(f"  Extracting {len(valid_segments)} segments...")
         segment_files = []
 
-        for i, seg in enumerate(speech_segments):
+        for i, seg in enumerate(valid_segments):
             seg_path = temp_dir / f"seg_{i:03d}.wav"
             duration = seg['end'] - seg['start']
 
