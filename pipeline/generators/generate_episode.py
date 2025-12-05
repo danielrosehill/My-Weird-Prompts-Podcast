@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """
-AI Podcast Generator (Chatterbox via Replicate - Voice Cloning)
+AI Podcast Generator (Chatterbox via fal.ai - Voice Cloning)
 
-Uses Resemble AI's Chatterbox model on Replicate for instant voice cloning.
+Uses Resemble AI's Chatterbox model on fal.ai for instant voice cloning.
 Clones voices from sample audio files (Corn & Herman) for natural dialogue.
-
-Cost: ~$0.025 per 1K characters (~$1.88 per 15-min episode)
 
 Workflow:
 1. Takes a human-recorded audio prompt
@@ -14,11 +12,11 @@ Workflow:
 4. Concatenates: intro jingle + user prompt + AI dialogue + outro jingle
 
 Requires:
-    pip install google-genai python-dotenv replicate
+    pip install google-genai python-dotenv fal-client
 
 Environment:
     GEMINI_API_KEY - Your Gemini API key (can be in .env file)
-    REPLICATE_API_TOKEN - Your Replicate API token (can be in .env file)
+    FAL_KEY - Your fal.ai API key (can be in .env file as FAL_API_KEY)
 """
 
 import concurrent.futures
@@ -33,7 +31,7 @@ from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 
-import replicate
+import fal_client
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -85,8 +83,8 @@ VOICE_SAMPLES = {
     CO_HOST_NAME: VOICES_DIR / "herman" / "wav" / "herman-1min.wav",
 }
 
-# Target episode length (~15 minutes at ~150 words per minute)
-TARGET_WORD_COUNT = 2250  # ~15 minutes of dialogue
+# Target episode length (~20 minutes at ~150 words per minute)
+TARGET_WORD_COUNT = 3000  # ~20 minutes of dialogue
 
 # Parallel TTS settings
 MAX_TTS_WORKERS = 4  # Number of concurrent Replicate API calls (keep low to avoid rate limits)
@@ -101,7 +99,7 @@ MIN_SILENCE_DURATION = 0.3  # Silence must be at least this long to be detected 
 MAX_SILENCE_DURATION = 0.4  # Compress longer silences down to this duration
 TRIM_LEADING_TRAILING = True  # Remove silence at start/end of prompt
 
-# System prompt for generating a diarized podcast dialogue script (~15 minutes)
+# System prompt for generating a diarized podcast dialogue script (~20 minutes)
 PODCAST_SCRIPT_PROMPT = """You are a podcast script writer creating an engaging two-host dialogue for "{podcast_name}" ({podcast_subtitle}).
 
 ## About This Podcast
@@ -125,7 +123,7 @@ You MUST output the script in this exact diarized format - each line starting wi
 {host_name}: [dialogue]
 ...
 
-## Episode Structure (~15 minutes total when spoken, approximately 2000-2500 words)
+## Episode Structure (~20 minutes total when spoken, approximately 2750-3250 words)
 
 1. **Opening Hook** (30 seconds)
    - {host_name} welcomes listeners to {podcast_name} and introduces today's topic
@@ -136,7 +134,7 @@ You MUST output the script in this exact diarized format - each line starting wi
    - Both hosts establish what they'll cover
    - Set up why listeners should care
 
-3. **Core Discussion** (8-10 minutes)
+3. **Core Discussion** (12-14 minutes)
    - Deep, substantive back-and-forth exploration of the topic
    - {co_host_name} provides expert insights with specific details
    - {host_name} asks clarifying questions, plays devil's advocate
@@ -170,7 +168,7 @@ You MUST output the script in this exact diarized format - each line starting wi
 - **Specificity**: Use real numbers, names, dates, examples when possible
 - **Accuracy**: Be precise on technical topics. Mark speculation clearly with phrases like "from what we know" or "current research suggests"
 - **Accessibility**: Explain jargon when used, use analogies for complex concepts
-- **Length**: AIM FOR 2000-2500 WORDS TOTAL. This is critical for reaching ~15 minutes.
+- **Length**: AIM FOR 2750-3250 WORDS TOTAL. This is critical for reaching ~20 minutes.
 
 ## Output
 
@@ -181,7 +179,7 @@ Example format:
 {co_host_name}: Yeah, and I think what's interesting is that most of the coverage has been missing the real story here. There's this whole dimension that people aren't talking about.
 {host_name}: Okay, so break it down for us. What's actually going on beneath the surface?
 
-Now generate the full ~15 minute episode script (2000-2500 words) based on Daniel's audio prompt.
+Now generate the full ~20 minute episode script (2750-3250 words) based on Daniel's audio prompt.
 """.format(
     podcast_name=PODCAST_NAME,
     podcast_subtitle=PODCAST_SUBTITLE,
@@ -199,13 +197,14 @@ def get_gemini_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
-def get_replicate_client():
-    """Verify Replicate API token is set."""
-    api_token = os.environ.get("REPLICATE_API_TOKEN") or os.environ.get("REPLICATE_API")
-    if not api_token:
-        raise ValueError("REPLICATE_API_TOKEN environment variable not set. Add it to .env file.")
-    # Set it for the replicate library
-    os.environ["REPLICATE_API_TOKEN"] = api_token
+def get_fal_client():
+    """Verify fal.ai API key is set."""
+    # fal_client looks for FAL_KEY env var
+    api_key = os.environ.get("FAL_KEY") or os.environ.get("FAL_API_KEY")
+    if not api_key:
+        raise ValueError("FAL_KEY environment variable not set. Add it to .env file.")
+    # Set it for the fal_client library (it expects FAL_KEY)
+    os.environ["FAL_KEY"] = api_key
     return True
 
 
@@ -220,7 +219,7 @@ def transcribe_and_generate_script(client: genai.Client, audio_path: Path) -> st
     print(f"Uploaded file: {audio_file.name}")
 
     # Generate the diarized script
-    print("Generating diarized podcast script (~15 min episode)...")
+    print("Generating diarized podcast script (~20 min episode)...")
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=[PODCAST_SCRIPT_PROMPT, audio_file],
@@ -274,7 +273,7 @@ def parse_diarized_script(script: str) -> list[dict]:
 
 def upload_voice_samples() -> dict[str, str]:
     """
-    Upload voice samples to Replicate once and return reusable URLs.
+    Upload voice samples to fal.ai CDN once and return reusable URLs.
 
     Returns:
         Dict mapping speaker name to uploaded file URL
@@ -286,68 +285,43 @@ def upload_voice_samples() -> dict[str, str]:
             raise FileNotFoundError(f"Voice sample not found for {speaker}: {sample_path}")
 
         print(f"  Uploading voice sample for {speaker}...")
-        file = replicate.files.create(
-            file=sample_path,
-            metadata={"speaker": speaker, "purpose": "voice_cloning"}
-        )
-        uploaded_urls[speaker] = file.urls['get']
-        print(f"    Uploaded: {file.id}")
+        url = fal_client.upload_file(str(sample_path))
+        uploaded_urls[speaker] = url
+        print(f"    Uploaded: {url[:60]}...")
 
     return uploaded_urls
 
 
-def cleanup_uploaded_files(uploaded_urls: dict[str, str]):
-    """
-    Delete uploaded voice samples from Replicate after use.
-    """
-    for speaker, url in uploaded_urls.items():
-        try:
-            # Extract file ID from URL and delete
-            # URLs look like: https://replicate.delivery/pbxt/FILE_ID/filename
-            # We need to list files and find by URL
-            pass  # Files auto-expire, skip cleanup for now
-        except Exception as e:
-            print(f"  Warning: Could not clean up file for {speaker}: {e}")
-
-
 def synthesize_with_chatterbox(text: str, voice_sample_url: str, output_path: Path) -> Path:
     """
-    Synthesize speech using Chatterbox on Replicate with instant voice cloning.
+    Synthesize speech using Chatterbox on fal.ai with instant voice cloning.
 
     Args:
         text: Text to synthesize
-        voice_sample_url: URL to pre-uploaded voice sample (from replicate.files.create)
+        voice_sample_url: URL to pre-uploaded voice sample (from fal_client.upload_file)
         output_path: Where to save the generated audio
 
     Returns:
         Path to the generated audio file
     """
-    # Run Chatterbox on Replicate using pre-uploaded URL
-    output = replicate.run(
-        "resemble-ai/chatterbox:1b8422bc49635c20d0a84e387ed20879c0dd09254ecdb4e75dc4bec10ff94e97",
-        input={
-            "prompt": text,
-            "audio_prompt": voice_sample_url,  # Use URL instead of file object
+    # Run Chatterbox on fal.ai
+    result = fal_client.subscribe(
+        "fal-ai/chatterbox/text-to-speech",
+        arguments={
+            "text": text,
+            "audio_url": voice_sample_url,
             "exaggeration": 0.5,
-            "cfg_weight": 0.5,
+            "cfg": 0.5,
+            "temperature": 0.7,
         }
     )
 
-    # Download the output - handle both URL string and FileOutput object
+    # Download the output audio
     import urllib.request
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Get the URL from the output (handles FileOutput objects from newer replicate lib)
-    output_url = str(output) if hasattr(output, '__str__') else output
-    if hasattr(output, 'url'):
-        output_url = output.url
-    elif hasattr(output, 'read'):
-        # It's a file-like object, read and write directly
-        with open(output_path, 'wb') as f:
-            f.write(output.read())
-        return output_path
-
-    urllib.request.urlretrieve(output_url, str(output_path))
+    audio_url = result["audio"]["url"]
+    urllib.request.urlretrieve(audio_url, str(output_path))
 
     return output_path
 
@@ -830,7 +804,7 @@ Script:
 
 def generate_cover_art(image_prompt: str, episode_dir: Path, num_variants: int = 3) -> list[Path]:
     """
-    Generate multiple episode cover art variants using Replicate (Flux Schnell).
+    Generate multiple episode cover art variants using fal.ai (Flux Schnell).
 
     Args:
         image_prompt: Prompt describing the desired cover art
@@ -840,7 +814,7 @@ def generate_cover_art(image_prompt: str, episode_dir: Path, num_variants: int =
     Returns:
         List of paths to generated images (may be empty if all failed)
     """
-    print(f"Generating {num_variants} cover art variants with Replicate (Flux Schnell)...")
+    print(f"Generating {num_variants} cover art variants with fal.ai (Flux Schnell)...")
 
     # Enhance the prompt for podcast cover art style
     # CRITICAL: Explicitly forbid any text elements - AI image generators often produce garbled pseudo-text
@@ -851,32 +825,24 @@ def generate_cover_art(image_prompt: str, episode_dir: Path, num_variants: int =
     try:
         import urllib.request
 
-        # Generate multiple variants in parallel via single API call
-        output = replicate.run(
-            "black-forest-labs/flux-schnell",
-            input={
-                "prompt": enhanced_prompt,
-                "aspect_ratio": "1:1",
-                "output_format": "png",
-                "num_outputs": num_variants,
-            }
-        )
-
-        # Handle output (could be a list or single URL)
-        if not isinstance(output, list):
-            output = [output]
-
         # Save images to images/ subfolder
         images_dir = episode_dir / "images"
         images_dir.mkdir(parents=True, exist_ok=True)
 
-        for i, image_output in enumerate(output):
+        # Generate each variant (fal.ai flux-schnell doesn't support num_outputs)
+        for i in range(num_variants):
             try:
-                # Get URL from output
-                if hasattr(image_output, 'url'):
-                    image_url = image_output.url
-                else:
-                    image_url = str(image_output)
+                result = fal_client.subscribe(
+                    "fal-ai/flux/schnell",
+                    arguments={
+                        "prompt": enhanced_prompt,
+                        "image_size": "square",
+                        "num_images": 1,
+                    }
+                )
+
+                # Get URL from result
+                image_url = result["images"][0]["url"]
 
                 # Save with numbered suffix (cover_1.png, cover_2.png, cover_3.png)
                 output_path = images_dir / f"cover_{i+1}.png"
@@ -884,7 +850,7 @@ def generate_cover_art(image_prompt: str, episode_dir: Path, num_variants: int =
                 generated_paths.append(output_path)
                 print(f"  Cover art {i+1}/{num_variants} saved: images/{output_path.name}")
             except Exception as e:
-                print(f"  Warning: Failed to save cover art {i+1}: {e}")
+                print(f"  Warning: Failed to generate cover art {i+1}: {e}")
 
     except Exception as e:
         print(f"  Warning: Cover art generation failed: {e}")
@@ -1000,15 +966,14 @@ def generate_podcast_episode(
 
     print(f"\n{'='*60}")
     print(f"Generating podcast episode: {episode_name}")
-    print(f"Using Chatterbox (Replicate) with Voice Cloning")
+    print(f"Using Chatterbox (fal.ai) with Voice Cloning")
     print(f"Hosts: {HOST_NAME} & {CO_HOST_NAME}")
-    print(f"Cost: ~$0.025 per 1K characters + ~$0.01 for cover art")
     print(f"Output folder: {episode_dir}")
     print(f"{'='*60}\n")
 
     # Verify API keys and voice samples upfront
     gemini_client = get_gemini_client()
-    get_replicate_client()
+    get_fal_client()
 
     for speaker, sample_path in VOICE_SAMPLES.items():
         if not sample_path.exists():
@@ -1110,7 +1075,7 @@ def generate_podcast_episode(
         'audio_file': str(episode_path),
         'script_file': str(script_path),
         'segments_count': len(segments),
-        'tts_engine': 'chatterbox-replicate',
+        'tts_engine': 'chatterbox-fal',
         'voice_samples': {
             HOST_NAME: str(VOICE_SAMPLES[HOST_NAME]),
             CO_HOST_NAME: str(VOICE_SAMPLES[CO_HOST_NAME]),
@@ -1151,22 +1116,37 @@ def process_queue():
     """Process all audio files in the to-process queue."""
     audio_extensions = {".mp3", ".wav", ".m4a", ".ogg", ".flac"}
 
-    to_process = [
+    to_process = sorted([
         f for f in PROMPTS_TO_PROCESS_DIR.iterdir()
         if f.is_file() and f.suffix.lower() in audio_extensions
-    ]
+    ])
 
     if not to_process:
         print("No audio files found in the to-process queue.")
         print(f"Add audio files to: {PROMPTS_TO_PROCESS_DIR}")
         return
 
-    print(f"Found {len(to_process)} file(s) to process:")
-    for f in to_process:
-        print(f"  - {f.name}")
-    print()
+    total_episodes = len(to_process)
 
-    for prompt_path in to_process:
+    print(f"\n{'='*60}")
+    print(f"  QUEUE STATUS: {total_episodes} episode(s) to generate")
+    print(f"{'='*60}")
+    for i, f in enumerate(to_process, 1):
+        print(f"  [{i}] {f.name}")
+    print(f"{'='*60}\n")
+
+    successful = 0
+    failed = 0
+
+    for idx, prompt_path in enumerate(to_process, 1):
+        print(f"\n{'#'*60}")
+        print(f"  QUEUE: Processing episode {idx} of {total_episodes}")
+        print(f"  FILE:  {prompt_path.name}")
+        remaining = total_episodes - idx
+        if remaining > 0:
+            print(f"  REMAINING: {remaining} episode(s) after this")
+        print(f"{'#'*60}")
+
         try:
             episode_name = prompt_path.stem
             episode_path = generate_podcast_episode(prompt_path, episode_name)
@@ -1174,12 +1154,24 @@ def process_queue():
             # Delete the prompt file after successful processing
             prompt_path.unlink()
             print(f"Deleted processed prompt: {prompt_path.name}")
+            successful += 1
 
         except Exception as e:
             print(f"Error processing {prompt_path.name}: {e}")
             print(f"  (prompt file kept for retry)")
             import traceback
             traceback.print_exc()
+            failed += 1
+
+    # Final summary
+    print(f"\n{'='*60}")
+    print(f"  QUEUE COMPLETE")
+    print(f"{'='*60}")
+    print(f"  Successful: {successful}")
+    if failed > 0:
+        print(f"  Failed:     {failed}")
+    print(f"  Total:      {total_episodes}")
+    print(f"{'='*60}\n")
 
 
 def main():
