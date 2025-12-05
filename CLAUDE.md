@@ -1,5 +1,7 @@
 # CLAUDE.md - My Weird Prompts
 
+> **Note**: This validated pipeline has been integrated into the main My Weird Prompts website deployment repository at https://github.com/danielrosehill/My-Weird-Prompts
+
 ## Project Goal
 
 Build a **semi-automated AI podcast workflow** for *My Weird Prompts* (A Human-AI Podcast Collaboration):

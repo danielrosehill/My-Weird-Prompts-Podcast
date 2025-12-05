@@ -5,6 +5,8 @@
 
 The production pipeline for *My Weird Prompts*, a semi-automated AI podcast that combines human-recorded prompts with AI-generated responses, rendered as listenable audio episodes.
 
+> **Note**: This validated pipeline has been integrated into the main My Weird Prompts website deployment repository at [danielrosehill/My-Weird-Prompts](https://github.com/danielrosehill/My-Weird-Prompts).
+
 ## About the Show
 
 *My Weird Prompts* is a podcast where the host shares interesting, unusual, or thought-provoking prompts and AI responds with detailed, conversational explanations. The result is a hybrid human+AI podcast format that preserves the authenticity of the original question while leveraging AI for comprehensive responses.
