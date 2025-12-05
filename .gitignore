@@ -19,3 +19,9 @@ pipeline/prompts/done/*
 .idea/
 .vscode/
 *.swp
+
+# Migration artifacts
+migrated_posts/
+migration_cache/
+podcast_data.json
+migration.log
